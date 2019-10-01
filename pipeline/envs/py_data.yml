@@ -1,0 +1,5 @@
+name: py_data
+dependencies:
+  - numpy
+  - pandas
+
