@@ -116,8 +116,8 @@ rule map_fastq:
         "envs/biotools.yml",
     shell:
         """
-        bwa mem {input[1]} {input[0]} > {output[0]}
-        samtools index {output[0]} {output[1]} 
+        bwa mem -t 16 {input[1]} {input[0]} | samtools sort -@ 16 -o {output[0]} -
+        samtools index -@ 16 {output[0]} {output[1]} 
         """
 
 rule test3:
