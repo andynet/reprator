@@ -1,15 +1,11 @@
 configfile: "config.yaml"
 
-# wildcard_constraints:
-#     study="TCGA|GTEx",
-#     type="exon|gene",
-#     size="full|[0-9]+x[0-9]+",
-#     filter="pca|naive",
-#     nn="ff|pw",
-#     architecture="[0-9-]+",
-#     labels="samples|stages",
+include: "./scripts/input_functions.py"
 
-rule get_segments:
+# wildcard_constraints:
+#     size="full|[0-9]+x[0-9]+",
+
+rule:
     output:
         "{data_dir}/segments/{ctype}.seg.txt",
         "{data_dir}/segments/{ctype}.uniq.txt",
@@ -18,8 +14,7 @@ rule get_segments:
         bash scripts/get_segments.sh
         """
 
-# running this manually works, running on a cluster throws OOM error
-rule get_manifests:
+rule:
     output:
         "{data_dir}/manifests/{ctype}.query.tsv",
     conda:
@@ -30,7 +25,7 @@ rule get_manifests:
         Rscript ./scripts/get_manifest.R
         """
 
-rule add_segmentdata:
+rule:
     input:
         "{data_dir}/segments/{ctype}.uniq.txt",
         "{data_dir}/manifests/{ctype}.query.tsv",
@@ -48,13 +43,21 @@ rule add_segmentdata:
             --filtered {output[1]}
         """
 
-rule get_bams:
+rule get_filtered:
+    input:
+        expand("{data_dir}/manifests/{ctype}.filtered.tsv",
+                data_dir=config['data_dir'],
+                ctype=config['ctype'])
+
+rule:
     input:
         "{data_dir}/manifests/{ctype}.filtered.tsv",
     output:
-        "{data_dir}/bams/original/{ctype}/{file_id}.bam",
+        temp("{data_dir}/bams/original/{ctype}/{file_id}.bam"),
     params:
         "{data_dir}/manifests/{ctype}.{file_id}.tsv",
+    threads: 
+        16
     shell:
         """
         echo "$(head -n 1 {input})" > {params}; 
@@ -70,27 +73,21 @@ rule get_bams:
         rm {params}
         """
 
-rule get_fq:
+rule:
     input:
         "{data_dir}/bams/original/{ctype}/{file_id}.bam",
     output:
-        "{data_dir}/fastq/{ctype}/{file_id}.fq",
+        temp("{data_dir}/fastq/{ctype}/{file_id}.fq"),
     conda:
         "envs/biotools.yml",
+    priority:
+        10
     shell:
         """
         samtools bam2fq {input} > {output}
         """
 
-rule test2:
-    input:
-        expand("{data_dir}/fastq/{ctype}/{file_id}.fq",
-                data_dir = config['data_dir'],
-                ctype = "BLCA",
-                file_id = "205bfe9f-2bc9-4236-930c-a862874ad8e0",
-                ),
-
-rule create_index:
+rule:
     input:
         config['reference'],
     output:
@@ -105,7 +102,7 @@ rule create_index:
         bwa index {output}
         """ 
 
-rule map_fastq:
+rule:
     input:
         "{data_dir}/fastq/{ctype}/{file_id}.fq",
         "{data_dir}/reference/hg19.fa.gz",
@@ -114,28 +111,54 @@ rule map_fastq:
         "{data_dir}/bams/remapped/{ctype}/{file_id}.bam.bai",
     conda:
         "envs/biotools.yml",
+    threads:
+        16
+    priority:
+        20
     shell:
         """
         bwa mem -t 16 {input[1]} {input[0]} | samtools sort -@ 16 -o {output[0]} -
         samtools index -@ 16 {output[0]} {output[1]} 
         """
 
-rule test3:
+rule:
     input:
-        expand("{data_dir}/bams/remapped/{ctype}/{file_id}.bam.bai",
-                data_dir = config['data_dir'],
-                ctype = "BLCA",
-                file_id = "205bfe9f-2bc9-4236-930c-a862874ad8e0",
-                ),
+        get_file_ids,
+    output:
+        "{data_dir}/bams/remapped/{ctype}/completed.txt",
+    shell:
+        """
+        touch {output}
+        """
 
-# rule get_coverage:
+rule get_bams:
+    input: 
+        expand("{data_dir}/bams/remapped/{ctype}/completed.txt", 
+                data_dir=config['data_dir'],
+                ctype=config['ctype'])
+
+rule:
+    input:
+        config['reference'],
+    output:
+        "{data_dir}/bed/{bin_size}.bed",
+    shell:
+        """
+        
+        """
+# rule:
 #     input:
-#         {data_dir}/downloaded_bams/{sample_id}/{sample_id}.bam
+#         "{data_dir}/bams/remapped/{ctype}/{file_id}.bam",
+#         "{data_dir}/bed//hs37d5/{chrom}_1000.bed"
 #     output:
-#         {data_dir}/get_coverage/coverage_files/tcga_40set_all_chrom.txt.gz
-# 
-# TODO: remap bams to hg19 
-# 
+#         "{data_dir}/coverage/{ctype}/{file_id}.tsv.gz",
+#     conda:
+#         "envs/biotools.yml",
+#     shell:
+#         """
+#         samtools bedcov {bedfile} {bam_file} | gzip > {outfile}
+#         """ 
+
 # rule get_seg_means:
 #     input:
 #         {data_dir}/downloaded/seg.{ctype}.txt
