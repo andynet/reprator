@@ -1,7 +1,11 @@
 name: biotools
 channels:
   - bioconda
+  - conda-forge
 dependencies:
   - bedtools
   - samtools
   - bwa
+  - python=3.7
+  - biopython=1.74
+

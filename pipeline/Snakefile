@@ -2,7 +2,8 @@ configfile: "config.yaml"
 
 include: "./scripts/input_functions.py"
 
-# wildcard_constraints:
+wildcard_constraints:
+    bin_size="[0-9]+"
 #     size="full|[0-9]+x[0-9]+",
 
 rule:
@@ -142,48 +143,74 @@ rule:
         config['reference'],
     output:
         "{data_dir}/bed/{bin_size}.bed",
+    conda:
+        "envs/biotools.yml",
     shell:
         """
-        
+        python ./scripts/create_bed.py      \
+            --input {input}                 \
+            --output {output}               \
+            --bin_size {wildcards.bin_size}
         """
-# rule:
-#     input:
-#         "{data_dir}/bams/remapped/{ctype}/{file_id}.bam",
-#         "{data_dir}/bed//hs37d5/{chrom}_1000.bed"
-#     output:
-#         "{data_dir}/coverage/{ctype}/{file_id}.tsv.gz",
-#     conda:
-#         "envs/biotools.yml",
-#     shell:
-#         """
-#         samtools bedcov {bedfile} {bam_file} | gzip > {outfile}
-#         """ 
 
-# rule get_seg_means:
-#     input:
-#         {data_dir}/downloaded/seg.{ctype}.txt
-#         # /home/andyb/reprator/faststorage/data/bed_files/hs37d5/{chrom}_1000.bed
-#     output:
-#         {data_dir}/downloaded/seg_means/{sample}.tsv
-# 
-# rule get_1000g_transformed:
-#     input:
-#         /home/andyb/reprator/faststorage/data/coverage_files/all_chrom_hg19.txt.gz
-#         /home/andyb/reprator/faststorage/data/sample_info_files/sample_w_type.txt
-#     output:
-#         {data_dir}/g1000_data_transformed.tsv
-#
-# rule get_lin_model:
-#     input:
-#         # /home/andyb/reprator/faststorage/data/bed_files/ref_info_hg19.txt # backbone
-# 
-#         {data_dir}/get_coverage/coverage_files/tcga_40set_all_chrom.txt.gz  # downloaded TCGA coverage
-#         {data_dir}/downloaded/seg.{ctype}.translation.tsv
-#
-#        {data_dir}/downloaded/seg_means/{sample}.tsv                        # segment data
-#
-#        {data_dir}/g1000_data_transformed.tsv
-#    output:
-#        {data_dir}/residuals/{sample}_{ctype}.tsv
+rule:
+    input:
+        "{data_dir}/bams/remapped/{ctype}/{file_id}.bam",
+        "{data_dir}/bed/{bin_size}.bed",
+    output:
+        "{data_dir}/coverage/{ctype}/{file_id}_{bin_size}.tsv.gz",
+    conda:
+        "envs/biotools.yml",
+    shell:
+        """
+        samtools bedcov {input[1]} {input[0]} | gzip > {output}
+        """ 
+
+# end of finished parts
+rule:
+    input:
+        "{data_dir}/segments/{ctype}.seg.txt",
+        "{data_dir}/bed/{bin_size}.bed",
+        "{data_dir}/manifests/{ctype}.filtered.tsv",
+    output:
+        "{data_dir}/segment_means/{ctype}/{file_id}_{bin_size}.tsv.gz",
+    conda:
+        "envs/biotools.yml",
+    shell:
+        """
+        # /faststorage/project/reprator/Andrej/reprator/analyses/spyder/generate_dataframes.py part 1
+        """
+
+rule:
+    input:
+        "{data_dir}/coverage/{ctype}/{file_id}_{bin_size}.tsv.gz",
+        "{data_dir}/segment_means/{ctype}/{file_id}_{bin_size}.tsv.gz",
+        "{data_dir}/fixed/blood_means.tsv.gz",
+    output:
+        "{data_dir}/dataframes/{ctype}/{file_id}_{bin_size}.tsv.gz",
+    shell:
+        """
+        # /faststorage/project/reprator/Andrej/reprator/analyses/spyder/generate_dataframes.py part 2 
+        """
+
+rule:
+    input:
+        "{data_dir}/dataframes/{ctype}/{file_id}_{bin_size}.tsv.gz",        
+    output:
+        "{data_dir}/dataframes/{ctype}/{file_id}_{bin_size}.residuals.tsv.gz",
+    shell:
+        """
+        # /faststorage/project/reprator/Andrej/reprator/analyses/spyder/lin_model.py
+        """
+
+rule:
+    input:
+        "{data_dir}/dataframes/{ctype}/{file_id}_{bin_size}.residuals.tsv.gz",
+    output:
+        "{data_dir}/bigwig/{ctype}/{file_id}_{bin_size}.smoothed_residuals.bw",
+    shell:
+        """
+        # /faststorage/project/reprator/Andrej/reprator/analyses/spyder/optimize_filtering_and_smoothing.py
+        """
 
 

@@ -14,7 +14,7 @@ import gzip
 # %%
 parser = argparse.ArgumentParser(description="Creating bed file")
 parser.add_argument('--input', required=True)
-parser.add_argument('--bin_size', required=True)
+parser.add_argument('--bin_size', required=True, type=int)
 parser.add_argument('--output', required=True)
 args = parser.parse_args()
 

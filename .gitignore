@@ -1,0 +1,5 @@
+data/
+!data/fixed/README.txt
+pipeline/snakejob.*
+pipeline/.snakemake/
+.Rhistory
