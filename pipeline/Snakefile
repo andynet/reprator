@@ -58,20 +58,36 @@ rule:
     params:
         "{data_dir}/manifests/{ctype}.{file_id}.tsv",
     threads: 
-        16
+        4
+    log: "{data_dir}/logs/{ctype}_{file_id}.log"
     shell:
         """
+        unset http_proxy && unset https_proxy;
         echo "$(head -n 1 {input})" > {params}; 
         echo "$(grep {wildcards.file_id} {input})" >> {params}
         
         ./scripts/gdc-client download \
-            --n-processes 16 \
+            --n-processes 4 \
             -t ~/reprator/faststorage/data/div/gdc-user-token.2019-09-30T13_31_26.704Z.txt \
-            -m {params}
+            -m {params} > {log} 2> {log}
 
         mv ./{wildcards.file_id}/*.bam {output}
         rm -r ./{wildcards.file_id}
         rm {params}
+        """
+
+onerror:
+    print("An error occurred")
+    shell("mail -s 'an error occurred' andrejbalaz001@gmail.com < {log}")
+
+rule download_bams:
+    input:
+        get_download_ids,
+    output:
+        "{data_dir}/bams/original/{ctype}/completed.txt",
+    shell:
+        """
+        touch {output}
         """
 
 rule:
@@ -134,7 +150,7 @@ rule:
 
 rule get_bams:
     input: 
-        expand("{data_dir}/bams/remapped/{ctype}/completed.txt", 
+        expand("{data_dir}/bams/original/{ctype}/completed.txt", 
                 data_dir=config['data_dir'],
                 ctype=config['ctype'])
 
