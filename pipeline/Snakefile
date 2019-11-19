@@ -51,7 +51,7 @@ rule get_filtered:
 
 rule:
     input:
-        "{data_dir}/manifests/{ctype}.filtered.tsv",
+        ancient("{data_dir}/manifests/{ctype}.filtered.tsv"),
     output:
         "{data_dir}/bams/original/{ctype}/{file_id}.bam",
     params:
@@ -85,7 +85,7 @@ onerror:
     print("An error occurred")
     shell("mail -s 'an error occurred' andrejbalaz001@gmail.com < {log}")
 
-rule download_bams:
+rule:
     input:
         get_download_ids,
     output:
