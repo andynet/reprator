@@ -4,7 +4,6 @@ include: "./scripts/input_functions.py"
 
 wildcard_constraints:
     bin_size="[0-9]+"
-#     size="full|[0-9]+x[0-9]+",
 
 rule:
     output:
@@ -54,11 +53,11 @@ rule:
     input:
         "{data_dir}/manifests/{ctype}.filtered.tsv",
     output:
-        temp("{data_dir}/bams/original/{ctype}/{file_id}.bam"),
+        "{data_dir}/bams/original/{ctype}/{file_id}.bam",
     params:
         "{data_dir}/manifests/{ctype}.{file_id}.tsv",
     threads: 
-        4
+        32
     log: "{data_dir}/logs/{ctype}_{file_id}.log"
     shell:
         """
@@ -67,14 +66,20 @@ rule:
         echo "$(grep {wildcards.file_id} {input})" >> {params}
         
         ./scripts/gdc-client download \
-            --n-processes 4 \
-            -t ~/reprator/faststorage/data/div/gdc-user-token.2019-09-30T13_31_26.704Z.txt \
+            --n-processes 32 \
+            -t ~/reprator/faststorage/data/div/gdc-user-token.2019-11-05T09_17_07.518Z.txt \
             -m {params} > {log} 2> {log}
 
         mv ./{wildcards.file_id}/*.bam {output}
         rm -r ./{wildcards.file_id}
         rm {params}
         """
+
+# conda activate test-env
+# token=$(<~/reprator/faststorage/data/div/gdc-user-token.2019-11-05T09_17_07.518Z.txt)
+# unset http_proxy && unset https_proxy && unset ftp_proxy
+# aria2c -x 16 -o '795f4cb5-44bd-4bbf-ba7d-68195fc6deed.bam' --file-allocation='none' --header "X-Auth-Token: $token" 'https://api.gdc.cancer.gov/data/795f4cb5-44bd-4bbf-ba7d-68195fc6deed'
+
 
 onerror:
     print("An error occurred")
@@ -97,32 +102,62 @@ rule:
         temp("{data_dir}/fastq/{ctype}/{file_id}.fq"),
     conda:
         "envs/biotools.yml",
-    priority:
-        10
     shell:
         """
         samtools bam2fq {input} > {output}
         """
 
-rule:
-    input:
-        config['reference'],
+rule download_mapability:
     output:
-        "{data_dir}/reference/hg19.fa.gz",
+        "{data_dir}/reference/hg19_mapability.bw",
+        "{data_dir}/reference/hg19_mapability.wig",
+    params:
+        config['mapability'],
     conda:
         "envs/biotools.yml",
-    benchmark:
-        "{data_dir}/benchmark.txt",
     shell:
         """
-        ln -s $(realpath {input}) {output}
-        bwa index {output}
-        """ 
+        wget -O {output[0]} {params[0]}
+        mapCounter {output[0]} > {output[1]}
+        """
+
+rule download_reference:
+    output:
+        "{data_dir}/reference/hg19_raw.fa.gz",
+    params:
+        config['reference'],
+    shell:
+        """
+        wget -O {output[0]} {params[0]}
+        """
+
+rule:
+    input:
+        "{data_dir}/reference/hg19_raw.fa.gz",
+        "{data_dir}/reference/hg19_mapability.wig",
+    output:
+        "{data_dir}/reference/hg19_pure.fa",
+        "{data_dir}/reference/hg19_gc.wig",
+        "{data_dir}/reference/hg19_pure.fa.gz",
+    params:
+        "{data_dir}/reference/hg19_raw.fa",
+    conda:
+        "envs/biotools.yml",
+    shell:
+        """
+        gunzip -c {input[0]} > {params[0]}
+        chroms=$(grep fixed {input[1]} | cut -f 2 -d ' ' | cut -f 2 -d '=' | tr '\n' ',' | sed 's/,$//g')
+        seqkit grep -n -p ${{chroms}} {params[0]} | seqkit sort -n > {output[0]}
+        gcCounter {output[0]} > {output[1]}
+        gzip -c {output[0]} > {output[2]}
+        bwa index {output[2]}
+        rm {params[0]}
+        """
 
 rule:
     input:
         "{data_dir}/fastq/{ctype}/{file_id}.fq",
-        "{data_dir}/reference/hg19.fa.gz",
+        "{data_dir}/reference/hg19_pure.fa.gz",
     output:
         "{data_dir}/bams/remapped/{ctype}/{file_id}.bam",
         "{data_dir}/bams/remapped/{ctype}/{file_id}.bam.bai",
@@ -130,8 +165,6 @@ rule:
         "envs/biotools.yml",
     threads:
         16
-    priority:
-        20
     shell:
         """
         bwa mem -t 16 {input[1]} {input[0]} | samtools sort -@ 16 -o {output[0]} -
@@ -140,7 +173,7 @@ rule:
 
 rule:
     input:
-        get_file_ids,
+        get_downloaded_to_remapped,
     output:
         "{data_dir}/bams/remapped/{ctype}/completed.txt",
     shell:
@@ -148,12 +181,19 @@ rule:
         touch {output}
         """
 
-rule get_bams:
+rule download_bams:
     input: 
         expand("{data_dir}/bams/original/{ctype}/completed.txt", 
                 data_dir=config['data_dir'],
                 ctype=config['ctype'])
 
+rule remap_bams:
+    input:
+        expand("{data_dir}/bams/remapped/{ctype}/completed.txt",
+                data_dir=config['data_dir'],
+                ctype=config['ctype'])
+
+# checkpoint 19112019
 rule:
     input:
         config['reference'],

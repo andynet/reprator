@@ -2,5 +2,6 @@ data_dir: '../data'
 ctype: ["BLCA", "BRCA", "CESC", "COAD", "DLBC", "ESCA", "GBM", "HNSC", "KICH", "KIRC", "KIRP", "LAML", "LGG", 
         "LIHC", "LUAD", "LUSC", "OV", "PRAD", "READ", "SARC", "SKCM", "STAD", "THCA", "UCEC", "UVM"]
 # ctype: ["BRCA"]
-reference: '../data/fixed/hg19.fa.gz'
-
+# reference: '../data/fixed/hg19.fa.gz'
+reference: 'https://hgdownload.soe.ucsc.edu/goldenPath/hg19/bigZips/hg19.fa.gz'
+mapability: 'https://hgdownload.soe.ucsc.edu/goldenPath/hg19/encodeDCC/wgEncodeMapability/wgEncodeCrgMapabilityAlign100mer.bigWig'

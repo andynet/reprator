@@ -2,10 +2,15 @@ name: biotools
 channels:
   - bioconda
   - conda-forge
+  - r
 dependencies:
   - bedtools
   - samtools
   - bwa
   - python=3.7
   - biopython=1.74
+  - hmmcopy
+  - bioconductor-hmmcopy
+  - r-base
+  - seqkit
 
