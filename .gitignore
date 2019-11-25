@@ -3,3 +3,5 @@ data/
 pipeline/snakejob.*
 pipeline/.snakemake/
 .Rhistory
+pipeline/*.bam
+pipeline/*.aria2

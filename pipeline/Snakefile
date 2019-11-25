@@ -49,30 +49,57 @@ rule get_filtered:
                 data_dir=config['data_dir'],
                 ctype=config['ctype'])
 
-rule:
+# rule:
+#     input:
+#         "{data_dir}/manifests/{ctype}.filtered.tsv",
+#     output:
+#         "{data_dir}/bams/original/{ctype}/{file_id}.bam",
+#     params:
+#         "{data_dir}/manifests/{ctype}.{file_id}.tsv",
+#     threads: 
+#         32
+#     log: "{data_dir}/logs/{ctype}_{file_id}.log"
+#     shell:
+#         """
+#         unset http_proxy && unset https_proxy;
+#         echo "$(head -n 1 {input})" > {params}; 
+#         echo "$(grep {wildcards.file_id} {input})" >> {params}
+#         
+#         ./scripts/gdc-client download \
+#             --n-processes 32 \
+#             -t ~/reprator/faststorage/data/div/gdc-user-token.2019-11-05T09_17_07.518Z.txt \
+#             -m {params} > {log} 2> {log}
+#
+#         mv ./{wildcards.file_id}/*.bam {output}
+#         rm -r ./{wildcards.file_id}
+#         rm {params}
+#         """
+
+rule aria2c_download:
     input:
         "{data_dir}/manifests/{ctype}.filtered.tsv",
     output:
         "{data_dir}/bams/original/{ctype}/{file_id}.bam",
     params:
         "{data_dir}/manifests/{ctype}.{file_id}.tsv",
-    threads: 
-        32
-    log: "{data_dir}/logs/{ctype}_{file_id}.log"
+    threads:
+        16
+    log: 
+        "{data_dir}/logs/{ctype}_{file_id}.log",
+    conda:
+        "envs/aria.yml",
     shell:
         """
-        unset http_proxy && unset https_proxy;
-        echo "$(head -n 1 {input})" > {params}; 
-        echo "$(grep {wildcards.file_id} {input})" >> {params}
+        unset http_proxy && unset https_proxy && unset ftp_proxy;
+        token=$(<~/reprator/faststorage/data/div/gdc-user-token.2019-11-05T09_17_07.518Z.txt)
         
-        ./scripts/gdc-client download \
-            --n-processes 32 \
-            -t ~/reprator/faststorage/data/div/gdc-user-token.2019-11-05T09_17_07.518Z.txt \
-            -m {params} > {log} 2> {log}
+        aria2c \
+            -x 16 \
+            -o "./{wildcards.file_id}.bam" \
+            --header "X-Auth-Token: $token" \
+            "https://api.gdc.cancer.gov/data/{wildcards.file_id}" > {log} 2> {log}
 
-        mv ./{wildcards.file_id}/*.bam {output}
-        rm -r ./{wildcards.file_id}
-        rm {params}
+        mv ./{wildcards.file_id}.bam {output[0]}
         """
 
 # conda activate test-env

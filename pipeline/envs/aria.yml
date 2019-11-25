@@ -1,0 +1,8 @@
+name: aria
+channels:
+  - bioconda
+  - conda-forge
+dependencies:
+  - aria2 
+  - openssl=1.0
+
