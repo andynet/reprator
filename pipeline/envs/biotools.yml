@@ -13,4 +13,5 @@ dependencies:
   - bioconductor-hmmcopy
   - r-base
   - seqkit
+  - r-argparser
 

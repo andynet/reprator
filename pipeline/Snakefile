@@ -51,7 +51,7 @@ rule get_filtered:
 
 rule:
     input:
-        ancient("{data_dir}/manifests/{ctype}.filtered.tsv"),
+        "{data_dir}/manifests/{ctype}.filtered.tsv",
     output:
         "{data_dir}/bams/original/{ctype}/{file_id}.bam",
     params:
@@ -99,7 +99,7 @@ rule:
     input:
         "{data_dir}/bams/original/{ctype}/{file_id}.bam",
     output:
-        temp("{data_dir}/fastq/{ctype}/{file_id}.fq"),
+        "{data_dir}/fastq/{ctype}/{file_id}.fq",
     conda:
         "envs/biotools.yml",
     shell:
@@ -192,6 +192,36 @@ rule remap_bams:
         expand("{data_dir}/bams/remapped/{ctype}/completed.txt",
                 data_dir=config['data_dir'],
                 ctype=config['ctype'])
+
+rule bam_to_wig:
+    input:
+        "{data_dir}/bams/remapped/{ctype}/{file_id}.bam",
+    output:
+        "{data_dir}/wigs/{ctype}/{file_id}.wig",
+    conda:
+        "envs/biotools.yml",
+    shell:
+        """
+        readCounter {input[0]} > {output[0]}
+        """
+
+rule correct_gc_and_map:
+    input:
+        "{data_dir}/wigs/{ctype}/{file_id}.wig",
+        "{data_dir}/reference/hg19_mapability.wig",
+        "{data_dir}/reference/hg19_gc.wig",
+    output:
+        "{data_dir}/signal/{ctype}/{file_id}.tsv"
+    conda:
+        "envs/biotools.yml",
+    shell:
+        """
+        Rscript ./scripts/correct_gc_and_map.R  \
+            --gc {input[2]}                     \
+            --map {input[1]}                    \
+            --sample {input[0]}                 \
+            --out {output[0]}
+        """
 
 # checkpoint 19112019
 rule:
