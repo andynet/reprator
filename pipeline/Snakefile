@@ -5,6 +5,10 @@ include: "./scripts/input_functions.py"
 wildcard_constraints:
     bin_size="[0-9]+"
 
+onerror:
+    print("An error occurred")
+    shell("mail -s 'an error occurred' andrejbalaz001@gmail.com < {log}")
+
 rule:
     output:
         "{data_dir}/segments/{ctype}.seg.txt",
@@ -101,16 +105,6 @@ rule aria2c_download:
 
         mv ./{wildcards.file_id}.bam {output[0]}
         """
-
-# conda activate test-env
-# token=$(<~/reprator/faststorage/data/div/gdc-user-token.2019-11-05T09_17_07.518Z.txt)
-# unset http_proxy && unset https_proxy && unset ftp_proxy
-# aria2c -x 16 -o '795f4cb5-44bd-4bbf-ba7d-68195fc6deed.bam' --file-allocation='none' --header "X-Auth-Token: $token" 'https://api.gdc.cancer.gov/data/795f4cb5-44bd-4bbf-ba7d-68195fc6deed'
-
-
-onerror:
-    print("An error occurred")
-    shell("mail -s 'an error occurred' andrejbalaz001@gmail.com < {log}")
 
 rule:
     input:
@@ -250,7 +244,26 @@ rule correct_gc_and_map:
             --out {output[0]}
         """
 
-# checkpoint 19112019
+rule:
+    input:
+        "{data_dir}/manifests/{ctype}.filtered.tsv",
+        "{data_dir}/segments/{ctype}.seg.txt",
+        "{data_dir}/signal/{ctype}/{file_id}.tsv",
+    output:
+        "{data_dir}/signal/{ctype}/{file_id}.feather",
+    conda:
+        "envs/py_data.yml",
+    shell:
+        """
+        python create_dataframe.py          \
+            --manifest {input[0]}           \
+            --segments {input[1]}           \
+            --signal {input[2]}             \
+            --sample {wildcards.file_id}    \
+            --output {output[0]}
+        """
+
+# checkpoint 29112019
 rule:
     input:
         config['reference'],
