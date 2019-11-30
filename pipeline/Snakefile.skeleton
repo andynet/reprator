@@ -1,0 +1,173 @@
+configfile: "config.yaml"
+
+def get_all_files(wildcards):
+    files = []
+    data_dir = config['data_dir']
+    with checkpoints.get_ctypes.get(data_dir=data_dir).output[0].open() as f:
+        ctypes = f.readline().split()
+    for ctype in ctypes:
+        with checkpoints.filter_query.get(data_dir=data_dir, ctype=ctype).output[1].open() as f:
+            file_ids = f.readline().split()
+        files = files + [f'{data_dir}/signal/{ctype}/{file_id}.feather' for file_id in file_ids]
+    return files
+
+# rule all:
+#     input:
+#         "data/completed.txt",
+        
+rule notify:
+    input:
+        get_all_files,
+#     output:
+#         "{data_dir}/completed.txt",
+#     shell:
+#         """
+#         touch {output[0]}
+#         """
+
+checkpoint get_ctypes:
+    output:
+        "{data_dir}/ctypes.txt",
+    shell:
+        """
+        touch {output}
+        echo "PRAD LUAD BRCA" > {output}
+        """
+
+rule download_segments:
+    input:
+        "{data_dir}/ctypes.txt",
+    output:
+        "{data_dir}/segments/{ctype}.seg.txt",
+        "{data_dir}/segments/{ctype}.uniq.txt",
+    shell:
+        """
+        touch {output[0]}
+        touch {output[1]}
+        """
+
+rule download_query:
+    input:
+        "{data_dir}/ctypes.txt",
+    output:
+        "{data_dir}/manifests/{ctype}.query.tsv",
+    shell:
+        """
+        touch {output[0]}
+        """
+
+checkpoint filter_query:
+    input:
+        "{data_dir}/segments/{ctype}.uniq.txt",
+        "{data_dir}/manifests/{ctype}.query.tsv",
+    output:
+        "{data_dir}/manifests/{ctype}.merged.tsv",
+        "{data_dir}/manifests/{ctype}.filtered.tsv",
+    shell:
+        """
+        touch {output[0]}
+        touch {output[1]}
+        echo "a b c" > {output[1]}
+        """
+
+rule download_bams:
+    input:
+        "{data_dir}/manifests/{ctype}.filtered.tsv",
+    output:
+        "{data_dir}/bams/original/{ctype}/{file_id}.bam",
+    shell:
+        """
+        touch {output}
+        """
+
+rule bam_to_fastq:
+    input:
+        "{data_dir}/bams/original/{ctype}/{file_id}.bam",
+    output:
+        "{data_dir}/fastq/{ctype}/{file_id}.fq",
+    shell:
+        """
+        touch {output}
+        """
+
+rule download_mapability:
+    output:
+        "{data_dir}/reference/hg19_mapability.bw",
+        "{data_dir}/reference/hg19_mapability.wig",
+    shell:
+        """
+        touch {output[0]}
+        touch {output[1]}
+        """
+
+rule download_reference:
+    output:
+        "{data_dir}/reference/hg19_raw.fa.gz",
+    shell:
+        """
+        touch {output}
+        """
+
+rule filter_reference:
+    input:
+        "{data_dir}/reference/hg19_raw.fa.gz",
+        "{data_dir}/reference/hg19_mapability.wig",
+    output:
+        "{data_dir}/reference/hg19_pure.fa",
+        "{data_dir}/reference/hg19_gc.wig",
+        "{data_dir}/reference/hg19_pure.fa.gz",
+    shell:
+        """
+        touch {output[0]}
+        touch {output[1]}
+        touch {output[2]}
+        """
+
+rule map_fq_to_reference:
+    input:
+        "{data_dir}/fastq/{ctype}/{file_id}.fq",
+        "{data_dir}/reference/hg19_pure.fa.gz",
+    output:
+        "{data_dir}/bams/remapped/{ctype}/{file_id}.bam",
+        "{data_dir}/bams/remapped/{ctype}/{file_id}.bam.bai",
+    shell:
+        """
+        touch {output[0]}
+        touch {output[1]}
+        """
+
+rule bam_to_wig:
+    input:
+        "{data_dir}/bams/remapped/{ctype}/{file_id}.bam",
+    output:
+        "{data_dir}/wigs/{ctype}/{file_id}.wig",
+    shell:
+        """
+        touch {output[0]}
+        """
+
+rule correct_gc_and_map:
+    input:
+        "{data_dir}/wigs/{ctype}/{file_id}.wig",
+        "{data_dir}/reference/hg19_mapability.wig",
+        "{data_dir}/reference/hg19_gc.wig",
+    output:
+        "{data_dir}/signal/{ctype}/{file_id}.tsv"
+    shell:
+        """
+        touch {output[0]}
+        """
+
+rule add_segments:
+    input:
+        "{data_dir}/manifests/{ctype}.filtered.tsv",
+        "{data_dir}/segments/{ctype}.seg.txt",
+        "{data_dir}/signal/{ctype}/{file_id}.tsv",
+    output:
+        "{data_dir}/signal/{ctype}/{file_id}.feather",
+    shell:
+        """
+        touch {output[0]}
+        """
+
+
