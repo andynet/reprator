@@ -1,6 +1,23 @@
 name: py_data
+channels:
+#  - pytorch
+#  - spyder-ide
+  - conda-forge
+  - bioconda
 dependencies:
+  - python
   - numpy
+  - scipy
   - pandas
   - feather-format
+  - scikit-learn
+#  - pytorch
+#  - torchvision
+#  - cudatoolkit
+#  - spyder=4
+#  - notebook
+#  - pystan
+  - matplotlib
+  - seaborn
+  - pybigwig
 

@@ -24,4 +24,5 @@ write.table(out, argv$out, sep = '\t', col.names=NA)
 
 # plotBias(corrected_copy)
 # plotCorrection(corrected_copy)
+# segmented_copy <- HMMsegment(corrected_copy)
 # plotSegments(corrected_copy, segmented_copy)

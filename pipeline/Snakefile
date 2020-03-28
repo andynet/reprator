@@ -3,7 +3,10 @@ configfile: "config.yaml"
 include: "./scripts/input_functions.py"
 
 wildcard_constraints:
-    bin_size="[0-9]+"
+    bin_size="[0-9]+",
+    file_id="[0-9abcdef-]+",
+    smoothing="[0-9]+",
+    extreme="[0-9.]+"
 
 onerror:
     print("An error occurred")
@@ -95,7 +98,7 @@ rule aria2c_download:
     shell:
         """
         unset http_proxy && unset https_proxy && unset ftp_proxy;
-        token=$(<~/reprator/faststorage/data/div/gdc-user-token.2019-11-05T09_17_07.518Z.txt)
+        token=$(<{config[token]})
         
         aria2c \
             -x 16 \
@@ -244,7 +247,7 @@ rule correct_gc_and_map:
             --out {output[0]}
         """
 
-rule:
+rule add_segments:
     input:
         "{data_dir}/manifests/{ctype}.filtered.tsv",
         "{data_dir}/segments/{ctype}.seg.txt",
@@ -255,15 +258,126 @@ rule:
         "envs/py_data.yml",
     shell:
         """
-        python create_dataframe.py          \
-            --manifest {input[0]}           \
-            --segments {input[1]}           \
-            --signal {input[2]}             \
-            --sample {wildcards.file_id}    \
+        python ./scripts/create_dataframe.py        \
+            --manifest {input[0]}                   \
+            --segments {input[1]}                   \
+            --signal {input[2]}                     \
+            --sample {wildcards.file_id}            \
             --output {output[0]}
         """
 
-# checkpoint 29112019
+rule:
+    input:
+        get_remapped_to_signal,
+    output:
+        "{data_dir}/signal/{ctype}/completed.txt",
+    shell:
+        """
+        touch {output}
+        """
+
+rule get_feather:
+    input:
+        expand("{data_dir}/signal/{ctype}/completed.txt",
+                data_dir=config['data_dir'],
+                ctype=config['ctype'])
+
+rule download_bigwig:
+    output:
+        "{data_dir}/bigwigs/rep_timing.bw",
+    shell:
+        """
+        # wget http://hgdownload.cse.ucsc.edu/goldenpath/hg19/encodeDCC/wgEncodeUwRepliSeq/wgEncodeUwRepliSeqGm12878WaveSignalRep1.bigWig
+        wget -O {output[0]} {config[signal]}
+        """
+
+rule bigwig_to_dataframe:
+    input:
+        # get_random_feather,
+        "{data_dir}/signal/LUAD/603e16bf-9b05-49c9-a925-f409626c969a.feather",
+        "{data_dir}/bigwigs/rep_timing.bw",
+    output:
+        "{data_dir}/bigwigs/rep_timing.feather",
+    conda:
+        "envs/py_data.yml",
+    shell:
+        """
+        python ./scripts/convert_bigwig_to_dataframe.py \
+            --feather_file {input[0]}                   \
+            --bigwig_file {input[1]}                    \
+            --output {output[0]}
+        """
+ 
+rule:
+    input:
+        "{data_dir}/signal/{ctype}/{file_id}.feather",
+        "{data_dir}/bigwigs/rep_timing.feather",
+    output:
+        "{data_dir}/residuals/{ctype}/{file_id}/{smoothing}/signal.feather",
+        # "{data_dir}/residuals/{ctype}/{file_id}/{smoothing}/plots/chr1.png",
+        "{data_dir}/residuals/{ctype}/{file_id}/{smoothing}/lm_stats.tsv",
+    conda:
+        "envs/py_data.yml",
+    shell:
+        """
+        python ./scripts/build_linear_model.py  \
+            --datafile "{input[0]}"               \
+            --rep_timing "{input[1]}"             \
+            --signal "{output[0]}"
+        """
+
+rule:
+    input:
+        get_residuals,
+    output:
+        "{data_dir}/residuals/{ctype}/{smoothing}_completed.txt",
+    shell:
+        """
+        touch {output}
+        """
+
+rule get_residuals:
+    input:
+        expand("{data_dir}/residuals/{ctype}/{smoothing}_completed.txt",
+                data_dir=config['data_dir'],
+                ctype=config['ctype'],
+                smoothing=config['smoothing'])
+
+rule:
+    input:
+        "{data_dir}/signal/{ctype}/{file_id}.feather",
+        "{data_dir}/bigwigs/rep_timing.feather",
+    output:
+        "{data_dir}/residuals/{ctype}/{file_id}/smoothing_{smoothing}/extreme_{extreme}/signal.feather",
+        "{data_dir}/residuals/{ctype}/{file_id}/smoothing_{smoothing}/extreme_{extreme}/lm_stats.tsv",
+    conda:
+        "envs/py_data.yml",
+    shell:
+        """
+        python ./scripts/build_linear_model_with_extremes.py  \
+            --datafile "{input[0]}"               \
+            --rep_timing "{input[1]}"             \
+            --signal "{output[0]}"
+        """
+
+rule:
+    input:
+        get_residuals_extremes,
+    output:
+        "{data_dir}/residuals/{ctype}/{smoothing}_{extreme}_completed.txt",
+    shell:
+        """
+        touch {output}
+        """
+
+rule get_residuals_extremes:
+    input:
+        expand("{data_dir}/residuals/{ctype}/{smoothing}_{extreme}_completed.txt",
+                data_dir=config['data_dir'],
+                ctype=config['ctype'],
+                smoothing=config['smoothing'],
+                extreme=config['extreme'])
+
 rule:
     input:
         config['reference'],
@@ -292,43 +406,47 @@ rule:
         samtools bedcov {input[1]} {input[0]} | gzip > {output}
         """ 
 
-# end of finished parts
-rule:
-    input:
-        "{data_dir}/segments/{ctype}.seg.txt",
-        "{data_dir}/bed/{bin_size}.bed",
-        "{data_dir}/manifests/{ctype}.filtered.tsv",
-    output:
-        "{data_dir}/segment_means/{ctype}/{file_id}_{bin_size}.tsv.gz",
-    conda:
-        "envs/biotools.yml",
-    shell:
-        """
-        # /faststorage/project/reprator/Andrej/reprator/analyses/spyder/generate_dataframes.py part 1
-        """
-
 rule:
     input:
         "{data_dir}/coverage/{ctype}/{file_id}_{bin_size}.tsv.gz",
-        "{data_dir}/segment_means/{ctype}/{file_id}_{bin_size}.tsv.gz",
+        "{data_dir}/manifests/{ctype}.query.tsv",
+        "{data_dir}/segments/{ctype}.seg.txt",
         "{data_dir}/fixed/blood_means.tsv.gz",
     output:
         "{data_dir}/dataframes/{ctype}/{file_id}_{bin_size}.tsv.gz",
+    conda:
+        "envs/py_data.yml",
     shell:
         """
-        # /faststorage/project/reprator/Andrej/reprator/analyses/spyder/generate_dataframes.py part 2 
+        python ./scripts/generate_dataframes.py \
+            --coverage_cancer_file {input[0]}   \
+            --query_file {input[1]}             \
+            --segment_file {input[2]}           \
+            --coverage_blood_file {input[3]}    \
+            --output_file {output}
         """
 
-rule:
+rule main:
     input:
         "{data_dir}/dataframes/{ctype}/{file_id}_{bin_size}.tsv.gz",        
     output:
+        "{data_dir}/dataframes/{ctype}/{file_id}_{bin_size}.lm.log",
         "{data_dir}/dataframes/{ctype}/{file_id}_{bin_size}.residuals.tsv.gz",
+    conda:
+        "envs/py_data.yml",
     shell:
         """
-        # /faststorage/project/reprator/Andrej/reprator/analyses/spyder/lin_model.py
+        python ./scripts/lin_model.py   \
+            --input_file {input}        \
+            --log_file {output[0]}      \
+            --output_file {output[1]}
         """
 
+rule run_main:
+    input:
+        get_files,
+
+# end of finished parts 20200326
 rule:
     input:
         "{data_dir}/dataframes/{ctype}/{file_id}_{bin_size}.residuals.tsv.gz",
