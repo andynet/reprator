@@ -1,5 +1,9 @@
 # run with:
 # snakemake run_main --use-conda --cluster 'sbatch --mem=128g -c 4 -t 720 -A MutationRates' --jobs 5000 -k --drmaa-log-dir ../logs
+# snakemake --use-conda --cluster 'sbatch --mem=128g -c 16 -t 720 -A MutationRates –dependency {dependencies}' --jobs 5000 -k --drmaa-log-dir ../logs --batch run_main=999/1000 --dryrun --immediate-submit
+
+# DRMAA explanation https://bioinformatics.stackexchange.com/questions/491/how-are-snakemakes-cluster-and-drmaa-options-implemented
+# https://ulhpc-tutorials.readthedocs.io/en/latest/bio/snakemake/#immediate_submit
 
 configfile: "config.yaml"
 
@@ -14,6 +18,10 @@ wildcard_constraints:
 onerror:
     print("An error occurred")
     shell("mail -s 'an error occurred' andrejbalaz001@gmail.com < {log}")
+
+rule run_main:
+    input:
+        get_files,
 
 rule:
     output:
@@ -404,9 +412,10 @@ rule:
         "{data_dir}/coverage/{ctype}/{file_id}_{bin_size}.tsv.gz",
     conda:
         "envs/biotools.yml",
+    threads: 16
     shell:
         """
-        samtools bedcov {input[1]} {input[0]} | gzip > {output}
+        samtools bedcov -@ {threads} {input[1]} {input[0]} | gzip > {output}
         """ 
 
 rule:
@@ -444,20 +453,4 @@ rule main:
             --log_file {output[0]}      \
             --output_file {output[1]}
         """
-
-rule run_main:
-    input:
-        get_files,
-
-# end of finished parts 20200326
-rule:
-    input:
-        "{data_dir}/dataframes/{ctype}/{file_id}_{bin_size}.residuals.tsv.gz",
-    output:
-        "{data_dir}/bigwig/{ctype}/{file_id}_{bin_size}.smoothed_residuals.bw",
-    shell:
-        """
-        # /faststorage/project/reprator/Andrej/reprator/analyses/spyder/optimize_filtering_and_smoothing.py
-        """
-
 
