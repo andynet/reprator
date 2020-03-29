@@ -1,3 +1,6 @@
+# run with:
+# snakemake run_main --use-conda --cluster 'sbatch --mem=128g -c 4 -t 720 -A MutationRates' --jobs 5000 -k --drmaa-log-dir ../logs
+
 configfile: "config.yaml"
 
 include: "./scripts/input_functions.py"
