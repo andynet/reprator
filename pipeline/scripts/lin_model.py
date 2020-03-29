@@ -34,29 +34,29 @@ def check_VIF(df):
 
 
 # %%
-args = argparse.Namespace()
-args.input_file = \
-    '/faststorage/project/reprator/Andrej/reprator2/data/'\
-    'dataframes/BRCA/1973be6c-c5a9-40d1-bdd2-a752dd33d6d1_1000.tsv.gz'
+# args = argparse.Namespace()
+# args.input_file = \
+#     '/faststorage/project/reprator/Andrej/reprator2/data/'\
+#     'dataframes/BRCA/1973be6c-c5a9-40d1-bdd2-a752dd33d6d1_1000.tsv.gz'
 
-args.log_file = \
-    '/faststorage/project/reprator/Andrej/reprator2/data/'\
-    'dataframes/BRCA/1973be6c-c5a9-40d1-bdd2-a752dd33d6d1_1000.lm.log'
+# args.log_file = \
+#     '/faststorage/project/reprator/Andrej/reprator2/data/'\
+#     'dataframes/BRCA/1973be6c-c5a9-40d1-bdd2-a752dd33d6d1_1000.lm.log'
 
-args.rep_timing_file = \
-    '/faststorage/project/reprator/Andrej/reprator2/data/'\
-    'bigwigs/rep_timing.feather'
+# args.rep_timing_file = \
+#     '/faststorage/project/reprator/Andrej/reprator2/data/'\
+#     'bigwigs/rep_timing.feather'
 
-args.output_file = \
-    '/faststorage/project/reprator/Andrej/reprator2/data/'\
-    'dataframes/BRCA/1973be6c-c5a9-40d1-bdd2-a752dd33d6d1_1000.residuals.tsv.gz'
+# args.output_file = \
+#     '/faststorage/project/reprator/Andrej/reprator2/data/'\
+#     'dataframes/BRCA/1973be6c-c5a9-40d1-bdd2-a752dd33d6d1_1000.residuals.tsv.gz'
 
 # %%
-# parser = argparse.ArgumentParser(description="builds linear model")
-# parser.add_argument('--input_file', required=True)
-# parser.add_argument('--log_file', required=True)
-# parser.add_argument('--output_file', required=True)
-# args = parser.parse_args()
+parser = argparse.ArgumentParser(description="builds linear model")
+parser.add_argument('--input_file', required=True)
+parser.add_argument('--log_file', required=True)
+parser.add_argument('--output_file', required=True)
+args = parser.parse_args()
 
 # %%
 extreme = 2.0
