@@ -412,10 +412,9 @@ rule:
         "{data_dir}/coverage/{ctype}/{file_id}_{bin_size}.tsv.gz",
     conda:
         "envs/biotools.yml",
-    threads: 16
     shell:
         """
-        samtools bedcov -@ {threads} {input[1]} {input[0]} | gzip > {output}
+        samtools bedcov {input[1]} {input[0]} | gzip > {output}
         """ 
 
 rule:
