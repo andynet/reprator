@@ -1,11 +1,26 @@
 # run with:
-# snakemake run_main --use-conda --cluster 'sbatch --mem=128g -c 4 -t 720 -A MutationRates' --jobs 5000 -k --drmaa-log-dir ../logs
-# snakemake --use-conda --cluster 'sbatch --mem=128g -c 16 -t 720 -A MutationRates –dependency {dependencies}' --jobs 5000 -k --drmaa-log-dir ../logs --batch run_main=999/1000 --dryrun --immediate-submit
-
+# snakemake --use-conda --drmaa ' --mem=65536 -c 1 -t 12:00:00 -A MutationRates' --keep-going --rerun-incomplete --jobs 3723
+#
+# snakemake --profile config/slurm.yaml
+#
+# SLURM_ARGS="--mem=64g -p {cluster.partition} -N {cluster.nodes} -n {cluster.ntasks} -c {cluster.ncpus} -t {cluster.time} -J {cluster.job-name} -o {cluster.output} -e {cluster.error}"
+# snakemake 
+#   --use-conda 
+#   --cluster "sbatch $SLURM_ARGS --dependency {dependencies}" 
+#   --cluster-config cluster.yaml 
+#   --batch run_main=1/10 
+#   --configfile config.yaml 
+#   --immediate-submit 
+#   --jobs 1000 
+#   --keep-going 
+#   --dryrun
+#
+# DRMAA gives you the control to cancel jobs running on cluster with ctrl+c
+# it also immediatelly submits all jobs and handles dependencies
 # DRMAA explanation https://bioinformatics.stackexchange.com/questions/491/how-are-snakemakes-cluster-and-drmaa-options-implemented
 # https://ulhpc-tutorials.readthedocs.io/en/latest/bio/snakemake/#immediate_submit
 
-configfile: "config.yaml"
+# configfile: "config.yaml"
 
 include: "./scripts/input_functions.py"
 
@@ -439,7 +454,8 @@ rule:
 
 rule main:
     input:
-        "{data_dir}/dataframes/{ctype}/{file_id}_{bin_size}.tsv.gz",        
+        "{data_dir}/dataframes/{ctype}/{file_id}_{bin_size}.tsv.gz",
+        "{data_dir}/bigwigs/rep_timing.feather",        
     output:
         "{data_dir}/dataframes/{ctype}/{file_id}_{bin_size}.lm.log",
         "{data_dir}/dataframes/{ctype}/{file_id}_{bin_size}.residuals.tsv.gz",
@@ -447,9 +463,10 @@ rule main:
         "envs/py_data.yml",
     shell:
         """
-        python ./scripts/lin_model.py   \
-            --input_file {input}        \
-            --log_file {output[0]}      \
+        python ./scripts/lin_model.py       \
+            --input_file {input[0]}         \
+            --rep_timing_file {input[1]}    \
+            --log_file {output[0]}          \
             --output_file {output[1]}
         """
 
