@@ -2,6 +2,7 @@ data/
 !data/fixed/README.txt
 pipeline/snakejob.*
 pipeline/.snakemake/
+pipeline/logs/*
 .Rhistory
 pipeline/*.bam
 pipeline/*.aria2
