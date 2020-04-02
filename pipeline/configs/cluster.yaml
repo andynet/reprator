@@ -1,11 +1,14 @@
+# config file for the job execution on cluster 
+
 __default__:
-  time: "0-00:01:00"
-  partition: "batch"
-  nodes: 1
-  ntasks: 1
-  ncpus: 1
-  job-name: "{rule}"
-  output: "slurm-%j-%x.out"
-  error: "slurm-%j-%x.err"
-mapping:
-  ncpus: 4
+    account: "MutationRates"
+    cpus-per-task: 1
+    time: "12:00:00"
+    mem: 32768
+    output: "logs/{rule}-%j.out"
+    error: "logs/{rule}-%j.err"
+
+main:
+    time: "02:00:00"
+    mem: 16384
+

@@ -1,0 +1,11 @@
+data_dir: '/faststorage/project/reprator/Andrej/reprator2/data'
+ctype: ["BLCA", "BRCA", "CESC", "COAD", "DLBC", "ESCA", "GBM", "HNSC", "KICH", "KIRC", "KIRP", "LAML", "LGG",
+        "LIHC", "LUAD", "LUSC", "OV", "PRAD", "READ", "SARC", "SKCM", "STAD", "THCA", "UCEC", "UVM"]
+# ctype: ["BRCA", "COAD", "LUAD", "PRAD"]
+reference: 'https://hgdownload.soe.ucsc.edu/goldenPath/hg19/bigZips/hg19.fa.gz'
+mapability: 'https://hgdownload.soe.ucsc.edu/goldenPath/hg19/encodeDCC/wgEncodeMapability/wgEncodeCrgMapabilityAlign100mer.bigWig'
+signal: 'http://hgdownload.cse.ucsc.edu/goldenpath/hg19/encodeDCC/wgEncodeUwRepliSeq/wgEncodeUwRepliSeqGm12878WaveSignalRep1.bigWig'
+token: '/faststorage/project/reprator/data/div/gdc-user-token.2019-12-09T14_45_43.008Z.txt'
+smoothing: ['2000']
+extreme: ['2.0']
+

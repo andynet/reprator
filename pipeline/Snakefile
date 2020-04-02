@@ -1,26 +1,10 @@
 # run with:
-# snakemake --use-conda --drmaa ' --mem=65536 -c 1 -t 12:00:00 -A MutationRates' --keep-going --rerun-incomplete --jobs 3723
-#
-# snakemake --profile config/slurm.yaml
-#
-# SLURM_ARGS="--mem=64g -p {cluster.partition} -N {cluster.nodes} -n {cluster.ntasks} -c {cluster.ncpus} -t {cluster.time} -J {cluster.job-name} -o {cluster.output} -e {cluster.error}"
-# snakemake 
-#   --use-conda 
-#   --cluster "sbatch $SLURM_ARGS --dependency {dependencies}" 
-#   --cluster-config cluster.yaml 
-#   --batch run_main=1/10 
-#   --configfile config.yaml 
-#   --immediate-submit 
-#   --jobs 1000 
-#   --keep-going 
-#   --dryrun
+# snakemake --profile configs/slurm --batch run_main=1/1
 #
 # DRMAA gives you the control to cancel jobs running on cluster with ctrl+c
-# it also immediatelly submits all jobs and handles dependencies
+# it also handles dependencies
 # DRMAA explanation https://bioinformatics.stackexchange.com/questions/491/how-are-snakemakes-cluster-and-drmaa-options-implemented
 # https://ulhpc-tutorials.readthedocs.io/en/latest/bio/snakemake/#immediate_submit
-
-# configfile: "config.yaml"
 
 include: "./scripts/input_functions.py"
 
